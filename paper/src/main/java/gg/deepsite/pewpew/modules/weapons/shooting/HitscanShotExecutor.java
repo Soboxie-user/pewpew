@@ -8,6 +8,11 @@ import gg.deepsite.pewpew.utils.BukkitRegistry;
 import net.kyori.adventure.key.Key;
 import gg.deepsite.pewpew.modules.weapons.ammo.AmmoUtil;
 import gg.deepsite.pewpew.integrations.CombatTagIntegration;
+import gg.deepsite.pewpew.api.enums.ModifierType;
+import gg.deepsite.pewpew.api.objects.attachment.PewpewAttachment;
+import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentEffectUtil;
+import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentModifierUtil;
+import java.util.List;
 import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentUtil;
 import gg.deepsite.pewpew.modules.weapons.shooting.recoil.RecoilManager;
 import org.bukkit.FluidCollisionMode;
@@ -151,10 +156,12 @@ public class HitscanShotExecutor implements ShotExecutor {
 
 	private void applyHit(Player shooter, PewpewGunItem gun, LivingEntity target, double hitY, double distance, double damage,
 	                      int fireTicks) {
-		boolean headshot = gun.getHeadshotMultiplier() > 1.0 && Ballistics.isHeadshot(target, hitY);
+		List<PewpewAttachment> fitted = AttachmentModifierUtil.fitted(shooter.getInventory().getItemInMainHand());
+		double headshotMultiplier = AttachmentModifierUtil.apply(fitted, ModifierType.HEADSHOT, gun.getHeadshotMultiplier());
+		boolean headshot = headshotMultiplier > 1.0 && Ballistics.isHeadshot(target, hitY);
 		boolean crit = Ballistics.rollCrit(gun.getCritChance());
 		damage *= Ballistics.falloffMultiplier(distance, gun.getFalloffStart(), gun.getFalloffEnd(), gun.getFalloffMinMultiplier());
-		if (headshot) damage *= gun.getHeadshotMultiplier();
+		if (headshot) damage *= headshotMultiplier;
 		if (crit) damage *= gun.getCritMultiplier();
 
 		PewpewHitEvent hitEvent = new PewpewHitEvent(shooter, gun, target, damage, headshot, crit, distance);
@@ -169,6 +176,7 @@ public class HitscanShotExecutor implements ShotExecutor {
 		Ballistics.applyEffects(target, gun.getVictimEffects());
 		if (fireTicks > 0) target.setFireTicks(Math.max(target.getFireTicks(), fireTicks));
 		Ballistics.applyEffects(shooter, gun.getShooterEffects());
+		AttachmentEffectUtil.onHit(target, shooter, gun, fitted);
 		Ballistics.hitFeedback(shooter, gun, target, damage, headshot);
 		if (crit) Ballistics.critEffect(shooter, target);
 	}

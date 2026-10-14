@@ -2,6 +2,7 @@ package gg.deepsite.pewpew.modules.weapons.attachment;
 
 import gg.deepsite.pewpew.PewpewPlugin;
 import gg.deepsite.pewpew.api.enums.AttachmentType;
+import gg.deepsite.pewpew.api.enums.ModifierType;
 import gg.deepsite.pewpew.api.objects.PewPewItem;
 import gg.deepsite.pewpew.api.objects.PewpewGunItem;
 import gg.deepsite.pewpew.api.objects.PewpewMagazineItem;
@@ -19,7 +20,7 @@ import org.jetbrains.annotations.Nullable;
 @UtilityClass
 public class AttachmentUtil {
 
-	private static NamespacedKey key(AttachmentType slot) {
+	static NamespacedKey key(AttachmentType slot) {
 		return new NamespacedKey("pewpew", "attachment_" + slot.name().toLowerCase());
 	}
 
@@ -74,7 +75,7 @@ public class AttachmentUtil {
 		if (get(stack, AttachmentType.BARREL) instanceof PewpewBarrelAttachment barrel) {
 			damage *= barrel.getDamageModifier();
 		}
-		return damage;
+		return AttachmentModifierUtil.apply(stack, ModifierType.DAMAGE, damage);
 	}
 
 	public static double effectiveRange(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
@@ -82,7 +83,7 @@ public class AttachmentUtil {
 		if (get(stack, AttachmentType.BARREL) instanceof PewpewBarrelAttachment barrel) {
 			range *= barrel.getRangeModifier();
 		}
-		return range;
+		return AttachmentModifierUtil.apply(stack, ModifierType.RANGE, range);
 	}
 
 	public static int effectiveMaxAmmo(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
@@ -90,9 +91,12 @@ public class AttachmentUtil {
 				? magazine.getAmmoBonus() : 0;
 		if (MagazineUtil.enabled() && gun.isConsumesAmmo()) {
 			PewpewMagazineItem inserted = MagazineUtil.inserted(stack);
-			return Math.max(1, (inserted == null ? 0 : inserted.getCapacity() + bonus) + 1);
+			if (inserted == null) return 1;
+			double capacity = AttachmentModifierUtil.apply(stack, ModifierType.MAX_AMMO, inserted.getCapacity() + bonus);
+			return Math.max(1, (int) Math.round(capacity) + 1);
 		}
-		return Math.max(1, gun.getMaxAmmo() + bonus);
+		return Math.max(1, (int) Math.round(
+				AttachmentModifierUtil.apply(stack, ModifierType.MAX_AMMO, gun.getMaxAmmo() + bonus)));
 	}
 
 	public static int effectiveReloadTime(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
@@ -103,10 +107,33 @@ public class AttachmentUtil {
 		}
 		PewpewMagazineItem inserted = MagazineUtil.enabled() ? MagazineUtil.inserted(stack) : null;
 		if (inserted != null && inserted.getReloadModifier() > 0) time *= inserted.getReloadModifier();
+		time = AttachmentModifierUtil.apply(stack, ModifierType.RELOAD_TIME, time);
 		return Math.max(1, (int) Math.round(time));
 	}
 
+	public static double effectiveProjectileSpeed(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
+		return Math.max(0.0, AttachmentModifierUtil.apply(stack, ModifierType.PROJECTILE_SPEED, gun.getProjectileSpeed()));
+	}
+
+	public static double effectiveHeadshot(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
+		return AttachmentModifierUtil.apply(stack, ModifierType.HEADSHOT, gun.getHeadshotMultiplier());
+	}
+
+	/** Ticks between shots. FIRE_RATE modifiers above 1.0 shorten it, below 1.0 lengthen it. */
+	public static double effectiveFireRate(@NotNull PewpewGunItem gun, @NotNull ItemStack stack) {
+		return gun.getFireRate() / Math.max(0.05, AttachmentModifierUtil.multiplier(stack, ModifierType.FIRE_RATE));
+	}
+
+	public static double spreadMultiplier(@NotNull ItemStack stack) {
+		return gripMultiplier(stack) * AttachmentModifierUtil.multiplier(stack, ModifierType.SPREAD);
+	}
+
 	public static double recoilMultiplier(@NotNull ItemStack stack) {
+		return gripMultiplier(stack) * AttachmentModifierUtil.multiplier(stack, ModifierType.RECOIL);
+	}
+
+	/** The grip's own multiplier, which has always applied to both recoil and spread. */
+	private static double gripMultiplier(@NotNull ItemStack stack) {
 		if (get(stack, AttachmentType.GRIP) instanceof PewpewGripAttachment grip) {
 			return grip.getRecoilModifier();
 		}
@@ -115,14 +142,14 @@ public class AttachmentUtil {
 
 	public static double aimSpreadMultiplier(@NotNull ItemStack stack) {
 		if (get(stack, AttachmentType.SCOPE) instanceof PewpewScopeAttachment scope) {
-			return scope.getAimSpreadMultiplier();
+			return scope.getAimSpreadMultiplier() * AttachmentModifierUtil.multiplier(stack, ModifierType.AIM_SPREAD);
 		}
 		return 0.0;
 	}
 
 	public static double aimRecoilMultiplier(@NotNull ItemStack stack) {
 		if (get(stack, AttachmentType.SCOPE) instanceof PewpewScopeAttachment scope) {
-			return scope.getAimRecoilMultiplier();
+			return scope.getAimRecoilMultiplier() * AttachmentModifierUtil.multiplier(stack, ModifierType.AIM_RECOIL);
 		}
 		return 0.0;
 	}

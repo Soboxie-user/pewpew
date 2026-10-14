@@ -170,7 +170,7 @@ public class WeaponDeserializer {
 					"explosionKnockback", "fireTicks", "fuseTime", "gasEffects", "throwForce"),
 			ItemType.ATTACHMENT, Set.of(
 					"adsSpeedModifier", "aimRecoilMultiplier", "aimSpreadMultiplier", "ammoBonus", "attachmentType",
-					"damageModifier", "rangeModifier", "recoilModifier", "reloadModifier", "zoom"));
+					"damageModifier", "effects", "modifiers", "rangeModifier", "recoilModifier", "reloadModifier", "zoom"));
 
 	@NotNull
 	public static List<String> unknownKeys(@NotNull ItemType type, @NotNull ConfigurationNode node) {
@@ -233,6 +233,12 @@ public class WeaponDeserializer {
 		if (item != null) {
 			item.setMaxStack(maxStack);
 			item.setHoldPose(parseHoldPose(fileName, id, node));
+			if (item instanceof PewpewAttachment attachmentItem) {
+				attachmentItem.setModifiers(AttachmentModifiers.parse(node.node("modifiers"),
+						reason -> warn(fileName, id, reason)));
+				attachmentItem.setEffects(AttachmentEffectsParser.parse(fileName, id, node.node("effects"),
+						reason -> warn(fileName, id, reason)));
+			}
 			item.setColor(parseColor(fileName, id, node));
 		}
 		return item;
@@ -604,8 +610,8 @@ public class WeaponDeserializer {
 			return null;
 		}
 
-		return switch (attachmentType) {
-			case SCOPE -> PewpewScopeAttachment.builder()
+		if (AttachmentType.SCOPE.equals(attachmentType)) {
+			return PewpewScopeAttachment.builder()
 					.id(id).name(name).lore(lore).hideItemFlags(hideItemFlags)
 					.customModelData(customModelData).itemModel(itemModel)
 					.slot(AttachmentType.SCOPE)
@@ -614,31 +620,42 @@ public class WeaponDeserializer {
 					.aimSpreadMultiplier(node.node("aimSpreadMultiplier").getDouble(0.0))
 					.aimRecoilMultiplier(node.node("aimRecoilMultiplier").getDouble(0.0))
 					.build();
-			case BARREL -> PewpewBarrelAttachment.builder()
+		} else if (AttachmentType.BARREL.equals(attachmentType)) {
+			return PewpewBarrelAttachment.builder()
 					.id(id).name(name).lore(lore).hideItemFlags(hideItemFlags)
 					.customModelData(customModelData).itemModel(itemModel)
 					.slot(AttachmentType.BARREL)
 					.damageModifier(node.node("damageModifier").getDouble(1.0))
 					.rangeModifier(node.node("rangeModifier").getDouble(1.0))
 					.build();
-			case GRIP -> PewpewGripAttachment.builder()
+		} else if (AttachmentType.GRIP.equals(attachmentType)) {
+			return PewpewGripAttachment.builder()
 					.id(id).name(name).lore(lore).hideItemFlags(hideItemFlags)
 					.customModelData(customModelData).itemModel(itemModel)
 					.slot(AttachmentType.GRIP)
 					.recoilModifier(node.node("recoilModifier").getDouble(1.0))
 					.build();
-			case MAGAZINE -> PewpewMagazineAttachment.builder()
+		} else if (AttachmentType.MAGAZINE.equals(attachmentType)) {
+			return PewpewMagazineAttachment.builder()
 					.id(id).name(name).lore(lore).hideItemFlags(hideItemFlags)
 					.customModelData(customModelData).itemModel(itemModel)
 					.slot(AttachmentType.MAGAZINE)
 					.ammoBonus(node.node("ammoBonus").getInt(0))
 					.reloadModifier(node.node("reloadModifier").getDouble(1.0))
 					.build();
-		};
+		} else {
+			// Slot types registered from attachment-menu.yml have no fields of their own; everything they do
+			// comes from the 'modifiers' block, which deserializeOne() attaches to every attachment.
+			return PewpewGenericAttachment.builder()
+					.id(id).name(name).lore(lore).hideItemFlags(hideItemFlags)
+					.customModelData(customModelData).itemModel(itemModel)
+					.slot(attachmentType)
+					.build();
+		}
 	}
 
 	@NotNull
-	private static List<PewpewEffect> parseEffects(String fileName, String id, ConfigurationNode node) {
+	static List<PewpewEffect> parseEffects(String fileName, String id, ConfigurationNode node) {
 		List<PewpewEffect> effects = new ArrayList<>();
 		for (ConfigurationNode entry : node.childrenList()) {
 			String raw = entry.getString();
@@ -657,7 +674,7 @@ public class WeaponDeserializer {
 	}
 
 	@Nullable
-	private static Key parseKey(String fileName, String id, String field, @Nullable String name, @Nullable Key fallback) {
+	static Key parseKey(String fileName, String id, String field, @Nullable String name, @Nullable Key fallback) {
 		if (name == null || name.isBlank()) return fallback;
 		Key key = key(name);
 		if (key == null) {

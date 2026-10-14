@@ -1,0 +1,80 @@
+# Layout of the attachment menu (press the swap-offhand key over a gun to open it).
+#
+# 'pattern' draws the menu, nine characters per row, one line per row:
+#   -  a mask tile (decoration)
+#   G  the gun preview (change the character under gun-preview)
+#   any other character is a slot, defined under 'slots' below
+#
+# Each slot 'type' is a slot name. The four original types (SCOPE, BARREL, GRIP, MAGAZINE) always exist;
+# any other name you write here is created automatically, and can then be used as 'attachmentType' on an
+# attachment and in 'allowedAttachmentSlots' on a gun. Names may use letters, digits, '_', '.' and '-'.
+#
+# A gun holds one attachment per type, so a type can appear only once in the pattern.
+# Quote slot keys such as 'Y', 'N', 'on' or 'off', which YAML would otherwise read as booleans.
+#
+# Each slot has two icons: 'empty-icon' when the gun has the slot but nothing is fitted, and
+# 'unavailable-icon' (set once at the top, or per slot) when the gun has no such slot.
+# Both accept material, name, lore and custom-model-data.
+# Run /pewpew reload after editing this file.
+
+title: "<dark_gray>Attachments"
+rows: 3
+
+pattern:
+  - "---------"
+  - "--1234---"
+  - "----G----"
+
+mask:
+  material: LIGHT_GRAY_STAINED_GLASS_PANE
+  name: "<dark_gray> "
+
+gun-preview:
+  character: "G"
+  enabled: true
+
+# Shown in a slot the gun does not have. A slot can override it with its own 'unavailable-icon'.
+unavailable-icon:
+  material: BARRIER
+  name: "<red>Not available on this gun"
+
+slots:
+  "1":
+    type: SCOPE
+    name: "<yellow>Scope Slot"
+    empty-icon:
+      material: LIME_STAINED_GLASS_PANE
+      lore:
+        - "<dark_gray>Shift-click an attachment in your"
+        - "<dark_gray>inventory to fit it."
+  "2":
+    type: BARREL
+    name: "<yellow>Barrel Slot"
+    empty-icon:
+      material: LIME_STAINED_GLASS_PANE
+      lore:
+        - "<dark_gray>Shift-click an attachment in your"
+        - "<dark_gray>inventory to fit it."
+  "3":
+    type: GRIP
+    name: "<yellow>Grip Slot"
+    empty-icon:
+      material: LIME_STAINED_GLASS_PANE
+      lore:
+        - "<dark_gray>Shift-click an attachment in your"
+        - "<dark_gray>inventory to fit it."
+  "4":
+    type: MAGAZINE
+    name: "<yellow>Magazine Slot"
+    empty-icon:
+      material: LIME_STAINED_GLASS_PANE
+      lore:
+        - "<dark_gray>Shift-click an attachment in your"
+        - "<dark_gray>inventory to fit it."
+  # Example of a custom slot (also add its character to the pattern above):
+  # "5":
+  #   type: MUZZLE
+  #   name: "<yellow>Muzzle Slot"
+  #   empty-icon:
+  #     material: LIME_STAINED_GLASS_PANE
+  #     custom-model-data: 1001

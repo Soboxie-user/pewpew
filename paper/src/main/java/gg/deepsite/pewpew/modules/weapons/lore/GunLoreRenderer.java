@@ -54,7 +54,7 @@ public class GunLoreRenderer {
 			double range = AttachmentUtil.effectiveRange(gun, stack);
 			lore.add(bar("Damage", damage / DAMAGE_MAX, format(damage)));
 			lore.add(bar("Range", range / RANGE_MAX, format(range)));
-			double fireRate = Math.max(0.05, gun.getFireRate());
+			double fireRate = Math.max(0.05, AttachmentUtil.effectiveFireRate(gun, stack));
 			lore.add(bar("Fire Rate", FIRE_RATE_REF / fireRate, format(fireRate) + "t"));
 			if (gun.getBulletCount() > 1) {
 				lore.add(line("<gray>Pellets <dark_gray>┃ <color>" + gun.getBulletCount()));
@@ -62,8 +62,9 @@ public class GunLoreRenderer {
 			if (gun.getBulletDrop() > 0) {
 				lore.add(line("<gray>Bullet Drop <dark_gray>┃ <color>" + format(gun.getBulletDrop())));
 			}
-			if (gun.getHeadshotMultiplier() > 1.0) {
-				lore.add(line("<gray>Headshot <dark_gray>┃ <color>x" + format(gun.getHeadshotMultiplier())));
+			double headshot = AttachmentUtil.effectiveHeadshot(gun, stack);
+			if (headshot > 1.0) {
+				lore.add(line("<gray>Headshot <dark_gray>┃ <color>x" + format(headshot)));
 			}
 			int actionTicks = gun.getActionOpenTime() + gun.getActionCloseTime();
 			if (actionTicks > 0) {

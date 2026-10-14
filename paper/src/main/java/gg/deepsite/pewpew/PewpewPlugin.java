@@ -6,6 +6,7 @@ import gg.deepsite.pewpew.configuration.DefaultConfiguration;
 import gg.deepsite.pewpew.configuration.MessagesConfig;
 import gg.deepsite.pewpew.configuration.SoundsConfig;
 import gg.deepsite.pewpew.integrations.WorldGuardIntegration;
+import gg.deepsite.pewpew.modules.weapons.attachment.menu.AttachmentMenuConfig;
 import gg.deepsite.pewpew.utils.ChatUtils;
 import gg.deepsite.pewpew.utils.PewpewLog;
 import lombok.AccessLevel;
@@ -49,6 +50,9 @@ public final class PewpewPlugin extends JavaPlugin {
 
 		SpigotCommandLoader.loadResolvers();
 		SpigotCommandLoader.setFormattingProvider((commandException, message) -> ChatUtils.prefix(message));
+
+		// Slot types must be registered before the items that refer to them are loaded.
+		AttachmentMenuConfig.reloadConfig();
 
 		moduleManager.enable();
 

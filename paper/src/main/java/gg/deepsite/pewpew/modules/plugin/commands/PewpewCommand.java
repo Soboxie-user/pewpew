@@ -8,6 +8,7 @@ import gg.deepsite.pewpew.configuration.MessagesConfig;
 import gg.deepsite.pewpew.configuration.SoundsConfig;
 import gg.deepsite.pewpew.modules.items.ItemsModule;
 import gg.deepsite.pewpew.modules.items.commands.ItemsCommand;
+import gg.deepsite.pewpew.modules.weapons.attachment.menu.AttachmentMenuConfig;
 import gg.deepsite.pewpew.utils.ChatUtils;
 import gg.deepsite.pewpew.utils.UpdateChecker;
 import lombok.SneakyThrows;
@@ -35,6 +36,7 @@ public class PewpewCommand extends AnnotationCommand {
 		PewpewPlugin.setDefaultConfiguration(new DefaultConfiguration(PewpewPlugin.getInstance().getDataFolder()));
 		PewpewPlugin.setMessagesConfig(new MessagesConfig(PewpewPlugin.getInstance().getDataFolder()));
 		PewpewPlugin.setSoundsConfig(new SoundsConfig(PewpewPlugin.getInstance().getDataFolder()));
+		AttachmentMenuConfig.reloadConfig();
 		PewpewPlugin.getModuleManager().get(ItemsModule.class).reload();
 		sender.sendMessage(ChatUtils.prefix("<success>Configuration reloaded."));
 	}

@@ -15,6 +15,11 @@ import gg.deepsite.pewpew.api.objects.PewpewThrowableItem;
 import gg.deepsite.pewpew.integrations.CombatTagIntegration;
 import gg.deepsite.pewpew.modules.items.ItemsModule;
 import gg.deepsite.pewpew.modules.weapons.WeaponsModule;
+import gg.deepsite.pewpew.api.enums.ModifierType;
+import gg.deepsite.pewpew.api.objects.attachment.PewpewAttachment;
+import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentEffectUtil;
+import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentModifierUtil;
+import java.util.List;
 import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentUtil;
 import gg.deepsite.pewpew.modules.weapons.shooting.recoil.RecoilManager;
 import gg.deepsite.pewpew.modules.weapons.throwing.ThrowableHandler;
@@ -32,6 +37,8 @@ public class ProjectileShotExecutor implements ShotExecutor {
 	public static final NamespacedKey PROJECTILE_WEAPON_KEY = new NamespacedKey("pewpew", "weapon_id");
 	public static final NamespacedKey PROJECTILE_DAMAGE_KEY = new NamespacedKey("pewpew", "weapon_damage");
 	public static final NamespacedKey PROJECTILE_FIRE_KEY = new NamespacedKey("pewpew", "weapon_fire_ticks");
+	/** The attachments fitted when the shot was fired; the gun may have changed by the time it lands. */
+	public static final NamespacedKey PROJECTILE_ATTACHMENTS_KEY = new NamespacedKey("pewpew", "weapon_attachments");
 
 	private final RecoilManager recoilManager;
 
@@ -46,7 +53,7 @@ public class ProjectileShotExecutor implements ShotExecutor {
 		double spread = Spread.effective(shooter, gun, weapon, scoped);
 		PewpewAmmoItem ammo = AmmoUtil.statsOf(weapon);
 		double damage = AttachmentUtil.effectiveDamage(gun, weapon) * AmmoUtil.damageMultiplier(ammo);
-		double projectileSpeed = gun.getProjectileSpeed() * AmmoUtil.velocityMultiplier(ammo);
+		double projectileSpeed = AttachmentUtil.effectiveProjectileSpeed(gun, weapon) * AmmoUtil.velocityMultiplier(ammo);
 		boolean gravity = gun.getTrajectory() != null
 				? gun.getTrajectory() == Trajectory.ARC
 				: gun.getBulletDrop() > 0;
@@ -54,6 +61,7 @@ public class ProjectileShotExecutor implements ShotExecutor {
 		int pellets = Math.max(1, gun.getBulletCount());
 		String payload = payloadOf(gun, weapon);
 		int fireTicks = AmmoUtil.fireTicks(ammo);
+		String attachmentIds = AttachmentModifierUtil.ids(AttachmentModifierUtil.fitted(weapon));
 
 		for (int pellet = 0; pellet < pellets; pellet++) {
 			Vector velocity = Ballistics.applySpread(aim, spread).multiply(projectileSpeed);
@@ -71,6 +79,8 @@ public class ProjectileShotExecutor implements ShotExecutor {
 					.set(PROJECTILE_DAMAGE_KEY, PersistentDataType.DOUBLE, damage);
 			if (fireTicks > 0) projectile.getPersistentDataContainer()
 					.set(PROJECTILE_FIRE_KEY, PersistentDataType.INTEGER, fireTicks);
+			if (!attachmentIds.isEmpty()) projectile.getPersistentDataContainer()
+					.set(PROJECTILE_ATTACHMENTS_KEY, PersistentDataType.STRING, attachmentIds);
 			if (gun.getTrailParticle() != null) trail(projectile, gun.getTrailParticle());
 		}
 
@@ -159,14 +169,17 @@ public class ProjectileShotExecutor implements ShotExecutor {
 				.get(PROJECTILE_DAMAGE_KEY, PersistentDataType.DOUBLE);
 		double damage = stored != null ? stored : gun.getBaseDamage();
 
-		boolean headshot = gun.getHeadshotMultiplier() > 1.0
+		List<PewpewAttachment> fitted = AttachmentModifierUtil.fromIds(projectile.getPersistentDataContainer()
+				.get(PROJECTILE_ATTACHMENTS_KEY, PersistentDataType.STRING));
+		double headshotMultiplier = AttachmentModifierUtil.apply(fitted, ModifierType.HEADSHOT, gun.getHeadshotMultiplier());
+		boolean headshot = headshotMultiplier > 1.0
 				&& Ballistics.isHeadshot(target, projectile.getLocation().getY());
 		boolean crit = Ballistics.rollCrit(gun.getCritChance());
 		double distance = projectile.getOrigin() != null ? projectile.getLocation().distance(projectile.getOrigin()) : 0;
 		if (distance > 0) {
 			damage *= Ballistics.falloffMultiplier(distance, gun.getFalloffStart(), gun.getFalloffEnd(), gun.getFalloffMinMultiplier());
 		}
-		if (headshot) damage *= gun.getHeadshotMultiplier();
+		if (headshot) damage *= headshotMultiplier;
 		if (crit) damage *= gun.getCritMultiplier();
 
 		Player shooterPlayer = projectile.getShooter() instanceof Player p ? p : null;
@@ -185,6 +198,7 @@ public class ProjectileShotExecutor implements ShotExecutor {
 		}
 		Ballistics.disableShield(target, gun.getShieldDisableTime());
 		Ballistics.applyEffects(target, gun.getVictimEffects());
+		AttachmentEffectUtil.onHit(target, shooterPlayer, gun, fitted);
 		Integer fireTicks = projectile.getPersistentDataContainer().get(PROJECTILE_FIRE_KEY, PersistentDataType.INTEGER);
 		if (fireTicks != null) target.setFireTicks(Math.max(target.getFireTicks(), fireTicks));
 		if (shooterPlayer != null) {

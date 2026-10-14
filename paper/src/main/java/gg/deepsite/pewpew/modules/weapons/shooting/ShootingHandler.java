@@ -141,7 +141,7 @@ public class ShootingHandler {
 		long burstDelay = Math.max(1, gun.getBurstDelay());
 		long burstSpan = (burstCount - 1) * burstDelay;
 		int actionTicks = gun.getActionOpenTime() + gun.getActionCloseTime();
-		double intervalTicks = burstSpan + Math.max(0.05, gun.getFireRate()) + actionTicks;
+		double intervalTicks = burstSpan + Math.max(0.05, AttachmentUtil.effectiveFireRate(gun, weapon)) + actionTicks;
 
 		int maxDue = gun.isAutomatic() ? MAX_SHOTS_PER_TICK : 1;
 		double deadline = next != null && now - next < intervalTicks * maxDue ? next : now;
@@ -430,7 +430,7 @@ public class ShootingHandler {
 			return;
 		}
 		signalEmpty(player);
-		int lock = Math.max(4, (int) Math.ceil(gun.getFireRate()));
+		int lock = Math.max(4, (int) Math.ceil(AttachmentUtil.effectiveFireRate(gun, weapon)));
 		if (player.getCooldown(weapon) < lock) player.setCooldown(weapon, lock);
 	}
 

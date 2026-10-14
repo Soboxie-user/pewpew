@@ -23,6 +23,13 @@ abstract class AbstractGunMenu extends Menu {
 		this.gunSlot = gunSlot;
 	}
 
+	/** A chest menu with the given number of rows. */
+	protected AbstractGunMenu(Component title, int rows, Player viewer, int gunSlot) {
+		super(title, rows, InventoryType.CHEST);
+		this.viewer = viewer;
+		this.gunSlot = gunSlot;
+	}
+
 	protected static ItemsModule itemsModule() {
 		return PewpewPlugin.getModuleManager().get(ItemsModule.class);
 	}

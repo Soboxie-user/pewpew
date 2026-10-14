@@ -1,9 +1,8 @@
 package gg.deepsite.pewpew.modules.weapons.attachment.menu;
-import gg.deepsite.pewpew.api.enums.SoundEvent;
-import gg.deepsite.pewpew.utils.Sounds;
 
 import com.jazzkuh.inventorylib.objects.icon.Icon;
 import gg.deepsite.pewpew.api.enums.AttachmentType;
+import gg.deepsite.pewpew.api.enums.SoundEvent;
 import gg.deepsite.pewpew.api.events.PewpewAttachmentEvent;
 import gg.deepsite.pewpew.api.objects.PewPewItem;
 import gg.deepsite.pewpew.api.objects.PewpewGunItem;
@@ -11,27 +10,31 @@ import gg.deepsite.pewpew.api.objects.attachment.PewpewAttachment;
 import gg.deepsite.pewpew.modules.weapons.attachment.AttachmentUtil;
 import gg.deepsite.pewpew.modules.weapons.lore.GunLoreRenderer;
 import gg.deepsite.pewpew.utils.ChatUtils;
+import gg.deepsite.pewpew.utils.Sounds;
 import gg.deepsite.pewpew.utils.item.ItemBuilder;
 import gg.deepsite.pewpew.utils.item.ItemFactory;
-import org.jetbrains.annotations.Nullable;
-import net.kyori.adventure.text.format.TextDecoration;
-import org.bukkit.Material;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
+import java.util.Map;
 
 public class AttachmentMenu extends AbstractGunMenu {
 
-	private static final List<AttachmentType> ORDER = List.of(
-			AttachmentType.SCOPE, AttachmentType.BARREL, AttachmentType.GRIP, AttachmentType.MAGAZINE);
+	private final AttachmentMenuConfig config;
 
 	public AttachmentMenu(Player viewer, int gunSlot) {
-		super(ChatUtils.format("<color>Attachments").decoration(TextDecoration.ITALIC, false),
-				InventoryType.HOPPER, viewer, gunSlot);
+		this(viewer, gunSlot, AttachmentMenuConfig.getInstance());
+	}
+
+	public AttachmentMenu(Player viewer, int gunSlot, AttachmentMenuConfig config) {
+		// Plain MiniMessage rather than ChatUtils, so <font> tags in the title pass through untouched.
+		super(MiniMessage.miniMessage().deserialize(config.getTitle()), config.getSize() / 9, viewer, gunSlot);
+		this.config = config;
 		build();
 	}
 
@@ -39,29 +42,46 @@ public class AttachmentMenu extends AbstractGunMenu {
 		clearItems();
 		ItemStack gun = gunStack();
 		if (gun == null) return;
+		
 		PewpewGunItem gunItem = (PewpewGunItem) itemsModule().fromItemStack(gun);
 		List<AttachmentType> allowed = gunItem.getAllowedAttachmentSlots();
 
-		addItem(new Icon(0, gun.clone()));
+		// Mask tiles
+		for (int slot : config.getMaskSlots()) {
+			addItem(new Icon(slot, config.getMaskItem().clone()));
+		}
 
-		for (int i = 0; i < ORDER.size(); i++) {
-			AttachmentType type = ORDER.get(i);
-			int slot = i + 1;
-			if (allowed != null && allowed.contains(type)) {
-				PewpewAttachment fitted = AttachmentUtil.get(gun, type);
-				if (fitted != null) {
-					if (gunItem.isForcedSlot(type)) {
-						addItem(new Icon(slot, lockedAttachment(fitted)));
-					} else {
-						addItem(new Icon(slot, ItemFactory.build(fitted), true, event -> detach(type)));
-					}
+		// Gun preview, with its live lore
+		if (config.getGunSlot() != -1) {
+			addItem(new Icon(config.getGunSlot(), generatePreviewGun(gun)));
+		}
+
+		// Slots from the pattern: fitted attachment, empty icon, or the unavailable icon where the gun has no such slot
+		for (Map.Entry<Integer, AttachmentMenuConfig.SlotData> entry : config.getSlotMapping().entrySet()) {
+			int slotIndex = entry.getKey();
+			AttachmentType type = entry.getValue().type();
+			
+			if (allowed == null || !allowed.contains(type)) {
+				addItem(new Icon(slotIndex, entry.getValue().unavailableIcon().clone()));
+				continue;
+			}
+
+			PewpewAttachment fitted = AttachmentUtil.get(gun, type);
+			if (fitted != null) {
+				if (gunItem.isForcedSlot(type)) {
+					addItem(new Icon(slotIndex, lockedAttachment(fitted)));
 				} else {
-					addItem(new Icon(slot, emptyPane(type)));
+					addItem(new Icon(slotIndex, ItemFactory.build(fitted), true, event -> detach(type)));
 				}
 			} else {
-				addItem(new Icon(slot, filler()));
+				addItem(new Icon(slotIndex, entry.getValue().emptyIcon().clone()));
 			}
 		}
+	}
+
+	private ItemStack generatePreviewGun(ItemStack gun) {
+		ItemStack preview = gun.clone();
+		return preview;
 	}
 
 	@Override
@@ -165,21 +185,8 @@ public class AttachmentMenu extends AbstractGunMenu {
 				.toItemStack();
 	}
 
-	private ItemStack emptyPane(AttachmentType type) {
-		return new ItemBuilder(Material.GRAY_STAINED_GLASS_PANE)
-				.setName("<color>Empty " + label(type) + " Slot")
-				.addLoreLine("<dark_gray>Shift-click a " + label(type).toLowerCase() + " from")
-				.addLoreLine("<dark_gray>your inventory to fit it.")
-				.toItemStack();
-	}
-
-	private ItemStack filler() {
-		return new ItemBuilder(Material.BLACK_STAINED_GLASS_PANE).setName("<dark_gray>-").toItemStack();
-	}
-
 	@Nullable
 	private PewpewGunItem gunOf(ItemStack stack) {
 		return itemsModule().fromItemStack(stack) instanceof PewpewGunItem gun ? gun : null;
 	}
-
 }

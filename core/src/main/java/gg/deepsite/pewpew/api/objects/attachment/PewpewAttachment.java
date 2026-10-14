@@ -16,5 +16,11 @@ import lombok.experimental.SuperBuilder;
 public abstract class PewpewAttachment extends PewPewItem {
 
 	private AttachmentType slot;
+
+	/** Stat changes from the 'modifiers' config block; null when the attachment has none. */
+	private AttachmentModifiers modifiers;
+
+	/** Hit effects from the 'effects' config block; null when the attachment has none. */
+	private AttachmentEffects effects;
 }
 

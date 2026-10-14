@@ -22,7 +22,7 @@ public class Spread {
 
 	public static double effective(@NotNull Player shooter, @NotNull PewpewGunItem gun,
 	                               @NotNull ItemStack weapon, boolean scoped) {
-		double spread = gun.getSpread() * AttachmentUtil.recoilMultiplier(weapon);
+		double spread = gun.getSpread() * AttachmentUtil.spreadMultiplier(weapon);
 		if (scoped) spread *= AttachmentUtil.aimSpreadMultiplier(weapon);
 		spread *= stateMultiplier(gun.getSpreadModifiers(), shooter);
 		return spread + bloom(shooter, gun);
